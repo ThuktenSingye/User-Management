@@ -1,8 +1,14 @@
-FROM eclipse-temurin:17-jdk-alpine
-VOLUME /tmp
+# Use an official OpenJDK runtime as a parent image
+FROM openjdk:11-jre-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the application JAR file into the container
+COPY target/user-management-0.0.1-SNAPSHOT.jar /app/app.jar
+
+# Expose the port that the application will run on
 EXPOSE 8080
 
-ARG JAR_FILE=target/user-management-0.0.1-SNAPSHOT.jar
-ADD ${JAR_FILE} app.jar
-
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+# Specify the command to run on container startup
+CMD ["java", "-jar", "app.jar"]
