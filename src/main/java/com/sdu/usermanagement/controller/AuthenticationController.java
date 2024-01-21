@@ -14,7 +14,7 @@ import com.sdu.usermanagement.service.AuthenticationService;
 
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/auth")
 public class AuthenticationController {
 
     @Autowired
