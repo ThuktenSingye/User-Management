@@ -11,11 +11,13 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 
 import com.sdu.usermanagement.model.Role;
 import com.sdu.usermanagement.service.UserService;
@@ -28,11 +30,14 @@ public class SecurityConfiguration {
 	@Autowired
 	private JwtFilter jwtFilter;
 
+	@Autowired
+	private LogoutHandler logoutHandler;
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
 		http.csrf(csrf -> csrf.disable())
 			.authorizeHttpRequests(request -> request
-				.requestMatchers("/api/v1/auth/**")
+				.requestMatchers("/auth/**")
 						.permitAll()
 						.requestMatchers("/roles/**").hasRole(Role.RoleName.ADMIN.toString())
 						.requestMatchers("/api/v1/admin").hasAuthority(Role.RoleName.ADMIN.toString())
@@ -55,7 +60,14 @@ public class SecurityConfiguration {
 				.anyRequest().authenticated())
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authenticationProvider(authenticationProvider())
-			.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+			.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+			.logout(logout -> logout
+				.logoutUrl("/auth/logout")
+				.addLogoutHandler(logoutHandler)
+				.logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext())
+				
+			);
+
 		
 		return http.build();
 					

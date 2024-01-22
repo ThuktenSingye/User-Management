@@ -11,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.stereotype.Service;
 
 import com.sdu.usermanagement.dto.JwtAuthResponse;
@@ -27,6 +28,9 @@ import com.sdu.usermanagement.repository.TokenRepository;
 import com.sdu.usermanagement.repository.UserRepository;
 import com.sdu.usermanagement.utility.JwtUtil;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 @Service
 public class AuthenticationService {
  
@@ -39,8 +43,8 @@ public class AuthenticationService {
     @Autowired
     private RoleRepository roleRepository;
 
-    // @Autowired
-    // private TokenRepository tokenRepository;
+    @Autowired
+    private TokenRepository tokenRepository;
 
     @Autowired 
     private JwtUtil jwtUtil;
@@ -63,20 +67,21 @@ public class AuthenticationService {
         user.setStatus(UserStatus.REGISTERED);
         user.setPassword(new BCryptPasswordEncoder().encode("admin"));
         var savedUser = userRepository.saveAndFlush(user);
-        // var jwtToken = jwtUtil.generateToken(user);
-        // saveUserToken(savedUser, jwtToken);
+        var jwtToken = jwtUtil.generateToken(user);
+        revokeAllUsersToken(user);
+        saveUserToken(savedUser, jwtToken);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
-    // private void saveUserToken(User savedUser, String jwtToken) {
-    //     var token = Token.builder()
-    //             .token(jwtToken)
-    //             .tokenType(TokenType.BEARER)
-    //             .expired(false)
-    //             .revoked(false)
-    //             .user(savedUser).build();
-    //     tokenRepository.save(token);
-    // }
+    private void saveUserToken(User savedUser, String jwtToken) {
+        var token = Token.builder()
+                .token(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .expired(false)
+                .revoked(false)
+                .user(savedUser).build();
+        tokenRepository.saveAndFlush(token);
+    }
 
     public ResponseEntity<JwtAuthResponse> login(SignInRequest signInRequest) {
 
@@ -92,7 +97,8 @@ public class AuthenticationService {
                 JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();
                 jwtAuthResponse.setToken(jwtToken);
                 jwtAuthResponse.setRefreshToken(refreshJwtToken);
-                // saveUserToken(user, jwtToken);
+                revokeAllUsersToken(user);
+                saveUserToken(user, jwtToken);
                 return ResponseEntity.ok(jwtAuthResponse);
 
             }
@@ -123,7 +129,16 @@ public class AuthenticationService {
 		
 	}
 
-
-    
+    private void revokeAllUsersToken(User user){
+        var validUserTokens = tokenRepository.findAllValidTokenByUserId(user.getUserId());
+        if (validUserTokens.isEmpty()) {
+            return;
+        }
+        validUserTokens.forEach(token -> {
+            token.setRevoked(true);
+            token.setExpired(true);
+        });
+        tokenRepository.saveAllAndFlush(validUserTokens);
+    }
 
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.sdu.usermanagement.repository.TokenRepository;
 import com.sdu.usermanagement.service.UserService;
 import com.sdu.usermanagement.utility.JwtUtil;
 
@@ -23,7 +24,9 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtFilter extends OncePerRequestFilter {
     @Autowired
 	private JwtUtil jwtUtil;
-	
+
+	@Autowired
+	private TokenRepository tokenRepository;
 	
 	@Autowired
 	private UserService userService;
@@ -43,14 +46,12 @@ public class JwtFilter extends OncePerRequestFilter {
 		jwtToken = authHeader.substring(7);
 		userEmail = jwtUtil.extractUsername(jwtToken);
 
-
-		
-		
-		
 		if(userEmail != null  && SecurityContextHolder.getContext().getAuthentication() == null) {
 			UserDetails userDetails = userService.loadUserByUsername(userEmail);
-			
-			if(jwtUtil.validateToken(jwtToken, userDetails)) {
+			var isTokenValid = tokenRepository.findByToken(jwtToken)
+					.map(token -> !token.isExpired() && !token.isRevoked()).orElse(false);
+
+			if(jwtUtil.validateToken(jwtToken, userDetails) && isTokenValid) {
 				UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 				authToken.setDetails(userDetails);
 				SecurityContextHolder.getContext().setAuthentication(authToken);
