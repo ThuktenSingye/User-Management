@@ -144,7 +144,7 @@ public class UserService implements  UserDetailsService {
     
     public ResponseEntity<Long> getTotalUserCount() {
         try {
-            long totalUserCount = userRepository.count(); // Using count() to get the total number of users
+            long totalUserCount = userRepository.findAllAcceptedUsers().size(); // Using count() to get the total number of users
             logService.logApplicationStatus("Total user count retrieved");
             return new ResponseEntity<>(totalUserCount, HttpStatus.OK);
         } catch (Exception e) {
@@ -240,7 +240,7 @@ public class UserService implements  UserDetailsService {
     public ResponseEntity<List<UserDTO>> getAllUserByDepartmentId(Integer dept_id) {
 
         try {
-            List<UserDTO> userDTOs = userRepository.findAllDepartmentUser(dept_id).stream().map(this::userEntityToDto)
+            List<UserDTO> userDTOs = userRepository.findBySectionDepartmentDeptId(dept_id).stream().map(this::userEntityToDto)
                     .collect(Collectors.toList());
             logService.logApplicationStatus("Department User list retrieved");
             return new ResponseEntity<>(userDTOs, HttpStatus.OK);
