@@ -16,7 +16,7 @@ import com.sdu.usermanagement.service.AuthenticationService;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000") 
 public class AuthenticationController {
 
     @Autowired
