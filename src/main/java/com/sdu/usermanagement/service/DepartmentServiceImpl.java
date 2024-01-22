@@ -58,7 +58,7 @@ public class DepartmentServiceImpl implements DepartmentService {
                 // Create the directory if it doesn't exist
                 File directory = new File(FOLDER_PATH);
                 if (!directory.exists()) {
-                    directory.mkdir();    
+                    directory.mkdirs();   
                 }
                 
                 departmentImage = DepartmentImage.builder()

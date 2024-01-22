@@ -15,7 +15,6 @@ import com.sdu.usermanagement.model.User.UserStatus;
 import com.sdu.usermanagement.repository.RoleRepository;
 import com.sdu.usermanagement.repository.UserRepository;
 
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.log4j.Log4j2;
 
