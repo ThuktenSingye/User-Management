@@ -15,7 +15,7 @@ import com.sdu.usermanagement.service.ProfileImageServie;
 
 @RestController
 @RequestMapping("/profile_images")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 // @CrossOrigin(origins = "https://sdu-ums-internship.netlify.app/")
 public class ProfileImageController {
     

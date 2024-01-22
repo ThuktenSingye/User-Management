@@ -17,7 +17,7 @@ import com.sdu.usermanagement.service.RoleService;
 @RestController
 @RequestMapping("/roles")
 @Secured("ROLE_ADMIN")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class RoleController {
 
     @Autowired

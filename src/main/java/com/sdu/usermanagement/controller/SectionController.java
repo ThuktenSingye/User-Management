@@ -18,7 +18,7 @@ import com.sdu.usermanagement.service.SectionService;
 
 @RestController
 @RequestMapping("/sections")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 // @CrossOrigin(origins = "https://sdu-ums-internship.netlify.app/")
 public class SectionController {
 

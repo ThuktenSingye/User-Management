@@ -20,7 +20,7 @@ import com.sdu.usermanagement.service.DepartmentService;
 @RestController
 // @RequestMapping("v1/api")
 @RequestMapping("/departments")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 // @CrossOrigin(origins = "https://sdu-ums-internship.netlify.app/")
 
 public class DepartmentController {

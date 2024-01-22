@@ -20,7 +20,7 @@ import com.sdu.usermanagement.service.GenderService;
 
 @RestController
 @RequestMapping("/genders")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 // @CrossOrigin(origins = "https://sdu-ums-internship.netlify.app/")
 @Secured("ROLE_ADMIN")
 public class GenderController {
