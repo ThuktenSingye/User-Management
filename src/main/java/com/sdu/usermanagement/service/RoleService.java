@@ -19,6 +19,9 @@ public class RoleService {
     @Autowired
     private RoleRepository roleRepository;
 
+    @Autowired
+    private LogService logService;
+
     public ResponseEntity<RoleDTO> findRoleById(@NonNull Integer roleId) {
         try {
             /* Bad Request */
@@ -27,11 +30,12 @@ public class RoleService {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
             RoleDTO roleDTO = roleEntityToDto(roleRepository.findById(roleId).orElseThrow());
-            /* Succesful */
+            logService.logApplicationStatus("Role retrieved");
             return new ResponseEntity<>(roleDTO, HttpStatus.OK);
         } catch (Exception e) {
             /* Log the errrpr */
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Cannot Retrieved Role "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
@@ -40,13 +44,11 @@ public class RoleService {
     public ResponseEntity<String> saveRole(RoleDTO roleDTO) {
         try {
 
-            if (roleRepository.saveAndFlush(roleDtoToEntity(roleDTO)) == null) {
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-            }
-            /* Succesful */
+            roleRepository.saveAndFlush(roleDtoToEntity(roleDTO));
+            logService.logApplicationStatus("Saved Role");
             return new ResponseEntity<>(HttpStatus.CREATED);
         } catch (Exception e) {
-            /* Log the error */
+            logService.logApplicationStatus("Error: Saving Role "+ e.getMessage());
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 
         }
@@ -61,11 +63,11 @@ public class RoleService {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
             roleRepository.deleteById(roleId);
-            /* Succesful */
+            logService.logApplicationStatus("Role deleted");
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
-            /* Log the errrpr */
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Role not deleted" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
     

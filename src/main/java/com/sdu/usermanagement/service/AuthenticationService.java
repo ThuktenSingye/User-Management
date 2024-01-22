@@ -28,10 +28,11 @@ import com.sdu.usermanagement.repository.TokenRepository;
 import com.sdu.usermanagement.repository.UserRepository;
 import com.sdu.usermanagement.utility.JwtUtil;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.log4j.Log4j2;
+
 
 @Service
+@Log4j2
 public class AuthenticationService {
  
     @Autowired
@@ -45,6 +46,9 @@ public class AuthenticationService {
 
     @Autowired
     private TokenRepository tokenRepository;
+
+    @Autowired
+    private LogService logService;
 
     @Autowired 
     private JwtUtil jwtUtil;
@@ -84,7 +88,7 @@ public class AuthenticationService {
     }
 
     public ResponseEntity<JwtAuthResponse> login(SignInRequest signInRequest) {
-
+        
         try {
             Authentication authenticate = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(signInRequest.getEmail(), signInRequest.getPassword()));
@@ -99,6 +103,7 @@ public class AuthenticationService {
                 jwtAuthResponse.setRefreshToken(refreshJwtToken);
                 revokeAllUsersToken(user);
                 saveUserToken(user, jwtToken);
+                logService.logApplicationStatus("Log In");
                 return ResponseEntity.ok(jwtAuthResponse);
 
             }

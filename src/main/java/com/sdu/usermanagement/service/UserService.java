@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.nio.file.Paths;
@@ -35,7 +34,6 @@ import lombok.extern.log4j.Log4j2;
 
 @Service
 @Transactional
-@Log4j2
 @Primary
 public class UserService implements  UserDetailsService {
 
@@ -53,6 +51,9 @@ public class UserService implements  UserDetailsService {
 
     @Autowired
     private FileNameGenerator fileNameGenerator;
+
+    @Autowired
+    private LogService logService;
 
     @Value("${user-profile.upload-dir}")
     private String FOLDER_PATH;
@@ -91,16 +92,11 @@ public class UserService implements  UserDetailsService {
                         .get(FOLDER_PATH,
                                 fileNameGenerator.generateUniqueFileName(profileImageFile.getOriginalFilename()))
                         .toString();
-                log.info("File path:" + filePath);
+
                 // Create the directory if it doesn't exist
                 File directory = new File(FOLDER_PATH);
                 if (!directory.exists()) {
-                    if (directory.mkdirs()) {
-                        log.info("Directory created successfully: {}", FOLDER_PATH);
-                    } else {
-                        log.error("Failed to create directory: {}", FOLDER_PATH);
-                        return new ResponseEntity<>("Failed to create directory", HttpStatus.INTERNAL_SERVER_ERROR);
-                    }
+                    directory.mkdirs();
                 }
                 profileImage = ProfileImage.builder()
                         .imageName(profileImageFile.getOriginalFilename())
@@ -122,12 +118,12 @@ public class UserService implements  UserDetailsService {
             user.setStatus(UserStatus.ACCEPTED);
             user.setRoles(roles);
             User saveUser = userRepository.saveAndFlush(user);
-
+            logService.logApplicationStatus("User created");
             return new ResponseEntity<>(HttpStatus.CREATED);
         } catch (Exception e) {
             // log the error
-            log.error("Error while saving user: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: User not created" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
     }
@@ -136,11 +132,11 @@ public class UserService implements  UserDetailsService {
         try {
             List<UserDTO> users = userRepository.findAllAcceptedUsers().stream().map(this::userEntityToDto)
                     .collect(Collectors.toList());
-
+            logService.logApplicationStatus("User list retrieved");
             return new ResponseEntity<>(users, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while retrieving all user: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: User list not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
     }
@@ -149,10 +145,11 @@ public class UserService implements  UserDetailsService {
     public ResponseEntity<Long> getTotalUserCount() {
         try {
             long totalUserCount = userRepository.count(); // Using count() to get the total number of users
+            logService.logApplicationStatus("Total user count retrieved");
             return new ResponseEntity<>(totalUserCount, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while retrieving total user count: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Total user count not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -166,10 +163,11 @@ public class UserService implements  UserDetailsService {
             }
 
             long userByGender = userRepository.countByGender(genderId);
+            logService.logApplicationStatus("User count by gender");
             return new ResponseEntity<>(userByGender, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while retrieving user count by gender: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: User count by gender " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
@@ -182,12 +180,12 @@ public class UserService implements  UserDetailsService {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
             UserDTO userDTO = userEntityToDto(userRepository.findById(user_id).orElseThrow());
-            /* Succesful */
+            logService.logApplicationStatus("User retrieved");
             return new ResponseEntity<>(userDTO, HttpStatus.OK);
         } catch (Exception e) {
             /* Log the errrpr */
-            log.error("Error while retrieving user by id : ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: User not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
     }
@@ -201,12 +199,13 @@ public class UserService implements  UserDetailsService {
             if (!userRepository.existsById(user_id)) {
                 return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
             }
+            logService.logApplicationStatus("User deleted");
             userRepository.deleteById(user_id);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
             /* Log the error */
-            log.error("Error while deleting user : ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: User not deleted" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
     }
@@ -221,7 +220,7 @@ public class UserService implements  UserDetailsService {
             userRepository.updateUserEmail(email, user_id);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -229,11 +228,11 @@ public class UserService implements  UserDetailsService {
         try {
             List<UserDTO> users = userRepository.findBySectionSectId(sect_id).stream().map(this::userEntityToDto)
                     .collect(Collectors.toList());
-
+            logService.logApplicationStatus("Section User list retrieved");
             return new ResponseEntity<>(users, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while retrieving sections user: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Section User list not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
     }
@@ -243,11 +242,11 @@ public class UserService implements  UserDetailsService {
         try {
             List<UserDTO> userDTOs = userRepository.findAllDepartmentUser(dept_id).stream().map(this::userEntityToDto)
                     .collect(Collectors.toList());
-            log.info(userDTOs.size());
+            logService.logApplicationStatus("Department User list retrieved");
             return new ResponseEntity<>(userDTOs, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while finding the list of department user: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Department User list not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 

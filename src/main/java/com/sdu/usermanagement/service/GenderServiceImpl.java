@@ -12,24 +12,27 @@ import com.sdu.usermanagement.model.Gender;
 import com.sdu.usermanagement.repository.GenderRepository;
 
 import jakarta.transaction.Transactional;
-import lombok.extern.log4j.Log4j2;
 
 @Service
 @Transactional
-@Log4j2
 public class GenderServiceImpl implements GenderService {
 
     @Autowired
     private GenderRepository genderRepository;
+
+    @Autowired
+    private LogService logService;
+
 
     @Override
     public ResponseEntity<List<GenderDTO>> findAllGender() {
         try {
             List<GenderDTO> genderDTOs = genderRepository.findAll().stream().map(this::genderEntityToDto)
                     .collect(Collectors.toList());
+            logService.logApplicationStatus("Gnder retrieved");
             return new ResponseEntity<>(genderDTOs, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while finding all gender: ", e.getMessage());
+            logService.logApplicationStatus("Error: Retriving gender "+ e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -37,17 +40,12 @@ public class GenderServiceImpl implements GenderService {
     @Override
     public ResponseEntity<GenderDTO> findGenderById(Integer gender_id) {
         try {
-            /* Bad Request */
-            if (gender_id == null || gender_id < 0) {
-                /* Bad Request - Invalid user_id format */
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-            }
             GenderDTO genderDTO = genderEntityToDto(genderRepository.findById(gender_id).orElseThrow());
-            /* Succesful */
+            logService.logApplicationStatus("Gender retrieved");
             return new ResponseEntity<>(genderDTO, HttpStatus.OK);
         } catch (Exception e) {
             /* Log the errrpr */
-            log.error("Error while finding  gender by id: ", e.getMessage());
+            logService.logApplicationStatus("Error: Cannot Retrieved Gender "+ e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -55,14 +53,11 @@ public class GenderServiceImpl implements GenderService {
     @Override
     public ResponseEntity<String> saveGender(GenderDTO genderDTO) {
         try {
-            if (genderRepository.saveAndFlush(genderDtoToEntity(genderDTO)) == null) {
-                /* Log the error */
-                log.info("The saved entity is null");
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+            genderRepository.saveAndFlush(genderDtoToEntity(genderDTO));
+            logService.logApplicationStatus("Saved Gender");
             return new ResponseEntity<>(HttpStatus.CREATED);
         } catch (Exception e) {
-            log.error("Error while adding/updating gender: ", e.getMessage());
+            logService.logApplicationStatus("Error: Saving Gender "+ e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
@@ -79,12 +74,13 @@ public class GenderServiceImpl implements GenderService {
                 return new ResponseEntity<>("Gender not found", HttpStatus.NOT_FOUND);
             }
             genderRepository.deleteById(gender_id);
+            logService.logApplicationStatus("Gender Deleted");
             return new ResponseEntity<>(HttpStatus.OK);
         }
 
         catch (Exception e) {
             /* Log the error */
-            log.error("Error while deleting gender: ", e.getMessage());
+            logService.logApplicationStatus("Error: Gender Deleted "+ e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 

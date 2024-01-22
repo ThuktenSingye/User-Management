@@ -22,11 +22,9 @@ import com.sdu.usermanagement.utility.FileNameGenerator;
 
 import jakarta.transaction.Transactional;
 
-import lombok.extern.log4j.Log4j2;
 
 @Service
 @Transactional
-@Log4j2
 // In real life, minimized the try and catch
 public class DepartmentServiceImpl implements DepartmentService {
 
@@ -35,6 +33,9 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Autowired
     private FileNameGenerator fileNameGenerator;
+
+    @Autowired
+    private LogService logService;
 
     @Value("${department-image.upload-dir}")
     private String FOLDER_PATH;
@@ -50,23 +51,16 @@ public class DepartmentServiceImpl implements DepartmentService {
             DepartmentImage departmentImage = null;
 
             if (departmentImageFile != null) {
-
                 filePath = Paths
                         .get(FOLDER_PATH,
                                 fileNameGenerator.generateUniqueFileName(departmentImageFile.getOriginalFilename()))
                         .toString();
-                log.info("File path:" + filePath);
                 // Create the directory if it doesn't exist
                 File directory = new File(FOLDER_PATH);
                 if (!directory.exists()) {
-                    if (directory.mkdirs()) {
-                        log.info("Directory created successfully: {}", FOLDER_PATH);
-                    } else {
-                        log.error("Failed to create directory: {}", FOLDER_PATH);
-                        return new ResponseEntity<>("Failed to create directory", HttpStatus.INTERNAL_SERVER_ERROR);
-                    }
+                    directory.mkdir();    
                 }
-
+                
                 departmentImage = DepartmentImage.builder()
                         .deptImageName(departmentImageFile.getOriginalFilename())
                         .deptImageType(departmentImageFile.getContentType())
@@ -77,16 +71,14 @@ public class DepartmentServiceImpl implements DepartmentService {
 
             }
 
-            if (departmentRepository.saveAndFlush(department) == null) {
-                log.error("returned value is null");
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-
-            }
+            departmentRepository.saveAndFlush(department);
+                
+            logService.logApplicationStatus("Department created");
             return new ResponseEntity<>(HttpStatus.CREATED);
 
         } catch (Exception e) {
-            log.error(e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Department not created" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
     }
@@ -96,28 +88,26 @@ public class DepartmentServiceImpl implements DepartmentService {
         try {
             List<DepartmentDTO> departmentDTOs = departmentRepository.findAll().stream().map(this::entityToDto)
                     .collect(Collectors.toList());
+            logService.logApplicationStatus("Department list retrieved");
             return new ResponseEntity<>(departmentDTOs, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error while finding the list of department: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Department list not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
     @Override
     public ResponseEntity<DepartmentDTO> findDepartmentById(Integer dept_id) {
         try {
-            /* Bad Request */
-            if (dept_id == null || dept_id < 0) {
-                /* Bad Request - Invalid user_id format */
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-            }
+    
             DepartmentDTO departmentDTO = entityToDto(departmentRepository.findById(dept_id).orElseThrow());
             /* Succesful */
+            logService.logApplicationStatus("Department retrieved");
             return new ResponseEntity<>(departmentDTO, HttpStatus.OK);
         } catch (Exception e) {
             /* Log the errrpr */
-            log.error("Error while finding department by id:" + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Department not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
     }
@@ -125,22 +115,80 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public ResponseEntity<String> deleteDepartment(Integer dept_id) {
         try {
-            if (dept_id == null || dept_id < 0) {
-                /* log the error */
-                return new ResponseEntity<>("Invalid dept_id format", HttpStatus.BAD_REQUEST);
-            }
+
             if (!departmentRepository.existsById(dept_id)) {
+
                 return new ResponseEntity<>("Department not found", HttpStatus.NOT_FOUND);
             }
             departmentRepository.deleteById(dept_id);
+            logService.logApplicationStatus("Department deleted");
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
             /* Log the error */
-            log.error("Error while deleting department" + e.getMessage());
+            logService.logApplicationStatus("Error: Department not deleted" + e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
     }
+
+    /**
+     * Returns the total count of departments in the database.
+     *
+     * @return the total count of departments
+     */
+    @Override
+    public ResponseEntity<Long> findTotalDepartmentCount() {
+        try {
+            long totalDepartmentCount = departmentRepository.count();
+            logService.logApplicationStatus("Total department count retrieved");
+            return new ResponseEntity<>(totalDepartmentCount, HttpStatus.OK);
+        } catch (Exception e) {
+            logService.logApplicationStatus("Error: Total department count not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Returns the image of the department with the specified department ID.
+     *
+     * @param dept_id the ID of the department
+     * @return the image of the department, or an error response if the department
+     *         does not exist or if there was an error retrieving the image
+     */
+    @Override
+    public ResponseEntity<byte[]> findDepartmentImage(Integer dept_id) {
+        try {
+            Department department = departmentRepository.findById(dept_id).orElseThrow();
+
+            if (department.getDepartmentImage() == null) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            String filePath = department.getDepartmentImage().getDeptImagePath();
+
+            byte[] images = Files.readAllBytes(Paths.get(filePath));
+
+            if (images == null) {
+                // Cannot read image byte
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            HttpHeaders headers = new HttpHeaders();
+            String contentType = Files.probeContentType(Paths.get(filePath));
+            // log.info("Content type: " + contentType);
+            if (contentType == null) {
+                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            }
+            headers.setContentType(MediaType.parseMediaType(contentType));
+
+            logService.logApplicationStatus("Department image retrieved");
+            return new ResponseEntity<>(images, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            // Handle the IOException
+            logService.logApplicationStatus("Error: Department image not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
     // Method to convert Department Entity to Department DTO
     private DepartmentDTO entityToDto(Department department) {
@@ -163,64 +211,6 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setDeptDescription((departmentDTO.getDeptDescription()));
         department.setDepartmentImage(departmentDTO.getDepartmentImage());
         return department;
-    }
-
-    /**
-     * Returns the total count of departments in the database.
-     *
-     * @return the total count of departments
-     */
-    @Override
-    public ResponseEntity<Long> findTotalDepartmentCount() {
-        try {
-            long totalDepartmentCount = departmentRepository.count(); // Using count() to get the total department count
-            return new ResponseEntity<>(totalDepartmentCount, HttpStatus.OK);
-        } catch (Exception e) {
-            log.error("Error while retrieving total department count: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Returns the image of the department with the specified department ID.
-     *
-     * @param dept_id the ID of the department
-     * @return the image of the department, or an error response if the department
-     *         does not exist or if there was an error retrieving the image
-     */
-    @Override
-    public ResponseEntity<byte[]> findDepartmentImage(Integer dept_id) {
-        try {
-            Department department = departmentRepository.findById(dept_id).orElseThrow();
-
-            if (department.getDepartmentImage() == null) {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            }
-            String filePath = department.getDepartmentImage().getDeptImagePath();
-            log.info("Department File path:" + filePath);
-
-            byte[] images = Files.readAllBytes(Paths.get(filePath));
-
-            if (images == null) {
-                // Cannot read image byte
-                log.info("Read image file is null");
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            HttpHeaders headers = new HttpHeaders();
-            String contentType = Files.probeContentType(Paths.get(filePath));
-            // log.info("Content type: " + contentType);
-            if (contentType == null) {
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            }
-            headers.setContentType(MediaType.parseMediaType(contentType));
-
-            return new ResponseEntity<>(images, headers, HttpStatus.OK);
-
-        } catch (Exception e) {
-            // Handle the IOException
-            log.error("Error while fetching department image: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
     }
 
 }

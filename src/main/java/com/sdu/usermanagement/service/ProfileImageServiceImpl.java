@@ -19,7 +19,6 @@ import com.sdu.usermanagement.utility.FileNameGenerator;
 import lombok.extern.log4j.Log4j2;
 
 @Service
-@Log4j2
 public class ProfileImageServiceImpl implements ProfileImageServie {
 
     @Autowired
@@ -31,6 +30,9 @@ public class ProfileImageServiceImpl implements ProfileImageServie {
     @Autowired
     private FileNameGenerator fileNameGenerator;
 
+    @Autowired
+    private LogService logService;
+
     @Value("${user-profile.upload-dir}")
     private String FOLDER_PATH;
 
@@ -39,7 +41,6 @@ public class ProfileImageServiceImpl implements ProfileImageServie {
         String filePath = Paths
                 .get(FOLDER_PATH, fileNameGenerator.generateUniqueFileName(profileImageFile.getOriginalFilename()))
                 .toString();
-        log.info("File path:" + filePath);
         user_id = Integer.valueOf(user_id);
 
         try {
@@ -68,17 +69,14 @@ public class ProfileImageServiceImpl implements ProfileImageServie {
             Files.deleteIfExists(Paths.get(existingProfileImagePath));
             /* Update the profile image profile */
             ProfileImage uploadedProfile = profileImageRepository.saveAndFlush(profileImage);
-            log.info("Fiile path to be posted:" + filePath);
             profileImageFile.transferTo(new File(filePath));
             // user.setProfileImage(profileImage);
-            if (uploadedProfile == null) {
-                return new ResponseEntity<>("Save or Uploaded Profile is null", HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-
+            logService.logApplicationStatus("Profile image uploaded");
             return new ResponseEntity<>(HttpStatus.CREATED);
 
         } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Profile image not uploaded" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -96,14 +94,12 @@ public class ProfileImageServiceImpl implements ProfileImageServie {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
             String filePath = user.getProfileImage().getImagePath();
-            log.info("File path:" + filePath);
+
 
             byte[] images = Files.readAllBytes(Paths.get(filePath));
 
             if (images == null) {
-                // Cannot read image byte
-                log.info("Read image file is null");
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
             HttpHeaders headers = new HttpHeaders();
@@ -113,12 +109,13 @@ public class ProfileImageServiceImpl implements ProfileImageServie {
                 headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             }
             headers.setContentType(MediaType.parseMediaType(contentType));
+            logService.logApplicationStatus("Profile image retrieved");
             return new ResponseEntity<>(images, headers, HttpStatus.OK);
 
         } catch (Exception e) {
             // Handle the IOException
-            log.error("Error while fetching user image: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Profile image not retrieved" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
     }

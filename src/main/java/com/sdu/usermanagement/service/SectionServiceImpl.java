@@ -14,11 +14,9 @@ import com.sdu.usermanagement.repository.DepartmentRepository;
 import com.sdu.usermanagement.repository.SectionRepository;
 
 import jakarta.transaction.Transactional;
-import lombok.extern.log4j.Log4j2;
 
 @Service
 @Transactional
-@Log4j2
 public class SectionServiceImpl implements SectionService{
 
 
@@ -29,15 +27,20 @@ public class SectionServiceImpl implements SectionService{
     @Autowired
     private DepartmentRepository departmentRepository;
 
+    @Autowired
+    private LogService logService;
+
     @Override
     public ResponseEntity<List<SectionDTO>> findAllSection() {
         try{
-            List<SectionDTO> sectionDTOs = sectionRepository.findAll().stream().map(this::sectionEntityToDto).collect(Collectors.toList());
+            List<SectionDTO> sectionDTOs = sectionRepository.findAll().stream().map(this::sectionEntityToDto)
+                    .collect(Collectors.toList());
+            logService.logApplicationStatus("Section retrieved");
             return new ResponseEntity<>(sectionDTOs, HttpStatus.OK);
         }
         catch(Exception e){
-            log.error("Error while retrieving all section: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Retriving section "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     
     }
@@ -51,13 +54,13 @@ public class SectionServiceImpl implements SectionService{
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
             SectionDTO sectionDTO = sectionEntityToDto(sectionRepository.findById(sect_id).orElseThrow());
-            
+            logService.logApplicationStatus("Section retrieved");
             return new ResponseEntity<>(sectionDTO ,HttpStatus.OK);
         }
         catch(Exception e){
             /* Log the errrpr */
-            log.error("Error while retrieving section by id: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Cannot Retrieved Section "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
@@ -67,20 +70,14 @@ public class SectionServiceImpl implements SectionService{
             Department department = departmentRepository.findById(sectionDTO.getDepartment().getDeptId()).orElseThrow();
             // Set the Department in the Section entity
             Section section = sectionDtoToEntity(sectionDTO);
-
             section.setDepartment(department);
-            log.info("Section: " + section);
-            Section savedSection = sectionRepository.saveAndFlush(section);
-
-            if(savedSection == null){
-                log.info("Saved Section is null! Error while saving");
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+            sectionRepository.saveAndFlush(section);
+            logService.logApplicationStatus("Section saved");
             return new ResponseEntity<>(HttpStatus.CREATED);
         }
         catch(Exception e){
-            log.error("Error while saving/updating  section: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            logService.logApplicationStatus("Error: Saving Section "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -95,13 +92,13 @@ public class SectionServiceImpl implements SectionService{
                 return new ResponseEntity<>("Section not found", HttpStatus.NOT_FOUND);
             }
             sectionRepository.deleteById(sect_id);
+            logService.logApplicationStatus("Section Deleted");
             return new ResponseEntity<>(HttpStatus.OK);
         }
         
         catch(Exception e){
-            /* Log the error */
-            log.error("Error while deleting section: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Section Deleted "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         
     }
@@ -114,12 +111,14 @@ public class SectionServiceImpl implements SectionService{
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
 
-            List<SectionDTO> sectionDTOs = sectionRepository.findByDepartmentDeptId(deptId).stream().map(this::sectionEntityToDto).collect(Collectors.toList());
+            List<SectionDTO> sectionDTOs = sectionRepository.findByDepartmentDeptId(deptId).stream()
+                    .map(this::sectionEntityToDto).collect(Collectors.toList());
+            logService.logApplicationStatus("Deparmtent Section retrieved");
             return new ResponseEntity<>(sectionDTOs, HttpStatus.OK);
         }
         catch(Exception e){
-            log.error("Error while retrieving all section: ", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            logService.logApplicationStatus("Error: Cannot Retrieved Deparmtent Section "+ e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }	
    }
 
