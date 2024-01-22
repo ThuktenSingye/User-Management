@@ -28,11 +28,8 @@ import com.sdu.usermanagement.repository.TokenRepository;
 import com.sdu.usermanagement.repository.UserRepository;
 import com.sdu.usermanagement.utility.JwtUtil;
 
-import lombok.extern.log4j.Log4j2;
-
 
 @Service
-@Log4j2
 public class AuthenticationService {
  
     @Autowired
