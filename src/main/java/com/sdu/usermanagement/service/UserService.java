@@ -27,6 +27,7 @@ import com.sdu.usermanagement.repository.GenderRepository;
 import com.sdu.usermanagement.repository.RoleRepository;
 import com.sdu.usermanagement.repository.SectionRepository;
 import com.sdu.usermanagement.repository.UserRepository;
+import com.sdu.usermanagement.repository.UserRoleRepository;
 import com.sdu.usermanagement.utility.FileNameGenerator;
 
 import jakarta.transaction.Transactional;
@@ -51,6 +52,9 @@ public class UserService implements  UserDetailsService {
 
     @Autowired
     private FileNameGenerator fileNameGenerator;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @Autowired
     private LogService logService;
@@ -200,6 +204,7 @@ public class UserService implements  UserDetailsService {
                 return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
             }
             logService.logApplicationStatus("User deleted");
+            userRoleRepository.deleteByUserId(user_id);
             userRepository.deleteById(user_id);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {

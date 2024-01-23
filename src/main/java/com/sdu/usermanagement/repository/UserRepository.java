@@ -30,6 +30,11 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Query(value = "SELECT COUNT(*) FROM user u JOIN gender g ON u.Gender_Id = g.Gender_Id WHERE u.Gender_Id= :genderId", nativeQuery = true)
     long countByGender(@Param("genderId") Integer genderId);
 
+
+    // @Query("DELETE FROM user_role ur WHERE ur.User_Id = :userId")
+    // void deleteUserRoleByUserId(@Param("userId") Long userId);
+
+
     // @Query(value = "SELECT " + 
     //                 "u.User_Id, u.Employee_Id, u.CID_No, u.FName, " + 
     //                 "u.MName, u.LName, u.Mobile_No, u.Email, u.DOB, " +
